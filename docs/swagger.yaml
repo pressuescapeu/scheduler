@@ -1,0 +1,575 @@
+definitions:
+  domain.AddSectionRequest:
+    properties:
+      section_id:
+        type: integer
+    required:
+    - section_id
+    type: object
+  domain.AuthResponse:
+    properties:
+      student:
+        $ref: '#/definitions/domain.Student'
+      token:
+        type: string
+    type: object
+  domain.Course:
+    properties:
+      course_code:
+        type: string
+      course_name:
+        type: string
+      created_at:
+        type: string
+      credits:
+        type: integer
+      description:
+        type: string
+      id:
+        type: integer
+      is_internship:
+        type: boolean
+      semester:
+        type: string
+    type: object
+  domain.CreateScheduleRequest:
+    properties:
+      description:
+        type: string
+      schedule_name:
+        type: string
+    required:
+    - schedule_name
+    type: object
+  domain.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  domain.Professor:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      rating:
+        type: number
+    type: object
+  domain.RegisterRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      student_id:
+        type: string
+      year_of_study:
+        maximum: 5
+        minimum: 1
+        type: integer
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    - student_id
+    - year_of_study
+    type: object
+  domain.Schedule:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      is_submitted:
+        type: boolean
+      schedule_name:
+        type: string
+      student_id:
+        type: integer
+    type: object
+  domain.ScheduleWithSections:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      is_submitted:
+        type: boolean
+      schedule_name:
+        type: string
+      sections:
+        items:
+          $ref: '#/definitions/domain.SectionWithDetails'
+        type: array
+      student_id:
+        type: integer
+      total_credits:
+        type: integer
+    type: object
+  domain.Section:
+    properties:
+      available_seats:
+        type: integer
+      course_id:
+        type: integer
+      id:
+        type: integer
+      parent_section_id:
+        type: integer
+      professor_id:
+        type: integer
+      section_number:
+        type: string
+      section_type:
+        type: string
+      total_seats:
+        type: integer
+    type: object
+  domain.SectionMeeting:
+    properties:
+      building:
+        type: string
+      day_of_week:
+        type: string
+      end_time:
+        type: string
+      id:
+        type: integer
+      room:
+        type: string
+      section_id:
+        type: integer
+      start_time:
+        type: string
+    type: object
+  domain.SectionWithDetails:
+    properties:
+      available_seats:
+        type: integer
+      child_sections:
+        description: Labs, Recitations
+        items:
+          $ref: '#/definitions/domain.Section'
+        type: array
+      course:
+        $ref: '#/definitions/domain.Course'
+      course_id:
+        type: integer
+      id:
+        type: integer
+      meetings:
+        items:
+          $ref: '#/definitions/domain.SectionMeeting'
+        type: array
+      parent_section_id:
+        type: integer
+      professor:
+        $ref: '#/definitions/domain.Professor'
+      professor_id:
+        type: integer
+      section_number:
+        type: string
+      section_type:
+        type: string
+      total_seats:
+        type: integer
+    type: object
+  domain.Student:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      last_name:
+        type: string
+      student_id:
+        type: string
+      total_credits_earned:
+        type: integer
+      year_of_study:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate student and return JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/domain.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login student
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new student account
+      parameters:
+      - description: Student registration details
+        in: body
+        name: student
+        required: true
+        schema:
+          $ref: '#/definitions/domain.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register new student
+      tags:
+      - auth
+  /schedules:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all schedules belonging to the authenticated student
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Schedule'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all schedules for current student
+      tags:
+      - schedules
+    post:
+      consumes:
+      - application/json
+      description: Create a new schedule for the authenticated student
+      parameters:
+      - description: Schedule details
+        in: body
+        name: schedule
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Schedule'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new schedule
+      tags:
+      - schedules
+  /schedules/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a specific schedule with all its sections
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.ScheduleWithSections'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get schedule by ID
+      tags:
+      - schedules
+  /schedules/{id}/sections:
+    post:
+      consumes:
+      - application/json
+      description: Add a course section to an existing schedule
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Section to add
+        in: body
+        name: section
+        required: true
+        schema:
+          $ref: '#/definitions/domain.AddSectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a section to schedule
+      tags:
+      - schedules
+  /schedules/{id}/sections/{sectionId}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a course section from an existing schedule
+      parameters:
+      - description: Schedule ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Section ID
+        in: path
+        name: sectionId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a section from schedule
+      tags:
+      - schedules
+  /users/me:
+    get:
+      consumes:
+      - application/json
+      description: Get the profile of the authenticated student
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Student'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current student profile
+      tags:
+      - users
+swagger: "2.0"
