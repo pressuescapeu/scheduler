@@ -1056,7 +1056,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
 	BasePath:         "/api",
-	Schemes:          []string{"http", "https"},
+	Schemes:          []string{"https", "http"},
 	Title:            "Student Schedule API",
 	Description:      "API for managing student schedules and course registration",
 	InfoInstanceName: "swagger",

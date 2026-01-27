@@ -677,8 +677,8 @@ paths:
       tags:
       - users
 schemes:
-- http
 - https
+- http
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
