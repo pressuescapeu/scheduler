@@ -2,9 +2,13 @@ package postgres
 
 import (
 	"context"
+	_ "embed"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:embed migrations/schema.sql
+var schemaSQL string
 
 type Storage struct {
 	pool *pgxpool.Pool
@@ -20,6 +24,12 @@ func NewConnection(connString string) (*Storage, error) {
 	return &Storage{
 		pool: pool,
 	}, nil
+}
+
+// RunMigrations creates all tables if they don't exist
+func (s *Storage) RunMigrations(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, schemaSQL)
+	return err
 }
 
 // Close closes the database connection pool

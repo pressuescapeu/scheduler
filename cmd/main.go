@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"scheduler/internal/handler"
@@ -72,6 +73,11 @@ func main() {
 		panic(err)
 	}
 	defer storage.Close()
+
+	// Run migrations to create tables if they don't exist
+	if err := storage.RunMigrations(context.Background()); err != nil {
+		e.Logger.Fatal("Failed to run migrations:", err)
+	}
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 

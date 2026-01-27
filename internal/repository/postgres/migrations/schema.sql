@@ -1,4 +1,4 @@
-CREATE TABLE students (
+CREATE TABLE IF NOT EXISTS students (
                           id SERIAL PRIMARY KEY,
                           email VARCHAR(255) UNIQUE NOT NULL,
                           password_hash VARCHAR(255) NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE students (
                           created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE professors (
+CREATE TABLE IF NOT EXISTS professors (
                             id SERIAL PRIMARY KEY,
                             first_name VARCHAR(100) NOT NULL,
                             last_name VARCHAR(100) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE professors (
                             created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
                          id SERIAL PRIMARY KEY,
                          course_code VARCHAR(20) UNIQUE NOT NULL, -- "CSCI332"
                          course_name VARCHAR(200) NOT NULL,        -- "Operating Systems"
@@ -30,7 +30,7 @@ CREATE TABLE courses (
                          created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE sections (
+CREATE TABLE IF NOT EXISTS sections (
                           id SERIAL PRIMARY KEY,
                           course_id INTEGER NOT NULL,
                           section_number VARCHAR(10) NOT NULL,      -- "001", "002", "L01" (for labs)
@@ -47,7 +47,7 @@ CREATE TABLE sections (
                           UNIQUE(course_id, section_number)
 );
 
-CREATE TABLE section_meetings (
+CREATE TABLE IF NOT EXISTS section_meetings (
                                   id SERIAL PRIMARY KEY,
                                   section_id INTEGER NOT NULL,
                                   day_of_week VARCHAR(10) NOT NULL
@@ -60,7 +60,7 @@ CREATE TABLE section_meetings (
                                   FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
 );
 
-CREATE TABLE schedules (
+CREATE TABLE IF NOT EXISTS schedules (
                            id SERIAL PRIMARY KEY,
                            student_id INTEGER NOT NULL,
                            schedule_name VARCHAR(100) NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE schedules (
                            FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 );
 
-CREATE TABLE schedule_sections (
+CREATE TABLE IF NOT EXISTS schedule_sections (
                                    id SERIAL PRIMARY KEY,
                                    schedule_id INTEGER NOT NULL,
                                    section_id INTEGER NOT NULL,
@@ -82,9 +82,9 @@ CREATE TABLE schedule_sections (
                                    UNIQUE(schedule_id, section_id)
 );
 
-CREATE INDEX idx_sections_course ON sections(course_id);
-CREATE INDEX idx_sections_professor ON sections(professor_id);
-CREATE INDEX idx_section_meetings_section ON section_meetings(section_id);
-CREATE INDEX idx_schedules_student ON schedules(student_id);
-CREATE INDEX idx_schedule_sections_schedule ON schedule_sections(schedule_id);
-CREATE INDEX idx_schedule_sections_section ON schedule_sections(section_id);
+CREATE INDEX IF NOT EXISTS idx_sections_course ON sections(course_id);
+CREATE INDEX IF NOT EXISTS idx_sections_professor ON sections(professor_id);
+CREATE INDEX IF NOT EXISTS idx_section_meetings_section ON section_meetings(section_id);
+CREATE INDEX IF NOT EXISTS idx_schedules_student ON schedules(student_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_sections_schedule ON schedule_sections(schedule_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_sections_section ON schedule_sections(section_id);
