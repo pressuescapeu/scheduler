@@ -1,3 +1,4 @@
+basePath: /api
 definitions:
   domain.AddSectionRequest:
     properties:
@@ -214,8 +215,15 @@ definitions:
       year_of_study:
         type: integer
     type: object
+host: localhost:8080
 info:
   contact: {}
+  description: API for managing student schedules and course registration
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Student Schedule API
+  version: "1.0"
 paths:
   /auth/login:
     post:
@@ -297,6 +305,103 @@ paths:
       summary: Register new student
       tags:
       - auth
+  /courses:
+    get:
+      consumes:
+      - application/json
+      description: Get all courses, optionally filtered by semester
+      parameters:
+      - description: Semester to filter by (e.g., 'Summer 2025'). If omitted, returns
+          all courses.
+        in: query
+        name: semester
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Course'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all courses
+      tags:
+      - courses
+  /courses/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific course
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Course'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get course by ID
+      tags:
+      - courses
+  /courses/{id}/sections:
+    get:
+      consumes:
+      - application/json
+      description: Get all sections (lectures, labs, recitations) for a specific course
+      parameters:
+      - description: Course ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.SectionWithDetails'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all sections for a course
+      tags:
+      - courses
   /schedules:
     get:
       consumes:
@@ -572,4 +677,12 @@ paths:
       summary: Get current student profile
       tags:
       - users
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"scheduler/internal/domain"
 	"scheduler/internal/repository/postgres"
+	"scheduler/internal/utils"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -32,9 +33,13 @@ func SetupScheduleRoutes(e *echo.Echo, storage *postgres.Storage, authMiddleware
 // @Router /schedules [get]
 func GetMySchedules(storage *postgres.Storage) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		studentID := c.Get("user_id").(int)
+		userIDContext := c.Get("user_id")
+		userID, ok := userIDContext.(int)
+		if !ok {
+			return c.JSON(http.StatusBadRequest, utils.ErrValueConversion)
+		}
 
-		schedules, err := storage.GetStudentSchedules(c.Request().Context(), studentID)
+		schedules, err := storage.GetStudentSchedules(c.Request().Context(), userID)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to fetch schedules"})
 		}

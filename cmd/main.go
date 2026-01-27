@@ -57,6 +57,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer storage.Close()
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 

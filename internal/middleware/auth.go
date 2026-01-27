@@ -13,11 +13,11 @@ func JWTAuth() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			authHeader := c.Request().Header.Get("Authorization")
 			if authHeader == "" {
-				return c.JSON(http.StatusUnauthorized, utils.ErrUnauthorized)
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": utils.ErrUnauthorized.Error()})
 			}
 
 			if !strings.HasPrefix(authHeader, "Bearer ") {
-				return c.JSON(http.StatusUnauthorized, utils.ErrInvalidToken)
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": utils.ErrInvalidToken.Error()})
 			}
 
 			token := strings.Split(authHeader, " ")[1]
@@ -25,7 +25,7 @@ func JWTAuth() echo.MiddlewareFunc {
 			claims, err := utils.ValidateToken(token)
 
 			if err != nil {
-				return c.JSON(http.StatusUnauthorized, utils.ErrInvalidToken)
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": utils.ErrInvalidToken.Error()})
 			}
 
 			c.Set("user_id", claims.UserID)

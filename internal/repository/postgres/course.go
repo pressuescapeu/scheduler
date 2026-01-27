@@ -3,17 +3,34 @@ package postgres
 import (
 	"context"
 	"scheduler/internal/domain"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *Storage) GetAllCourses(ctx context.Context, semester string) ([]domain.Course, error) {
-	const query = `
-		SELECT id, course_code, course_name, credits, is_internship, description, semester, created_at
-        FROM courses
-        WHERE semester = $1
-        ORDER BY course_code;
-	`
+	var query string
+	var rows pgx.Rows
+	var err error
 
-	rows, err := s.pool.Query(ctx, query, semester)
+	if semester == "" {
+		// Return all courses if no semester specified
+		query = `
+			SELECT id, course_code, course_name, credits, is_internship, description, semester, created_at
+			FROM courses
+			ORDER BY semester DESC, course_code;
+		`
+		rows, err = s.pool.Query(ctx, query)
+	} else {
+		// Filter by semester if provided
+		query = `
+			SELECT id, course_code, course_name, credits, is_internship, description, semester, created_at
+			FROM courses
+			WHERE semester = $1
+			ORDER BY course_code;
+		`
+		rows, err = s.pool.Query(ctx, query, semester)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +116,11 @@ func (s *Storage) GetSectionsForCourse(ctx context.Context, courseID int) ([]dom
 		}
 
 		// Get meetings for this section
-		meetings, _ := s.GetSectionMeetings(ctx, sd.ID)
+		meetings, err := s.GetSectionMeetings(ctx, sd.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		sd.Meetings = meetings
 
 		sections = append(sections, sd)

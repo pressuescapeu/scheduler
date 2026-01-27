@@ -21,3 +21,10 @@ func NewConnection(connString string) (*Storage, error) {
 		pool: pool,
 	}, nil
 }
+
+// Close closes the database connection pool
+func (s *Storage) Close() {
+	if s.pool != nil {
+		s.pool.Close()
+	}
+}

@@ -80,7 +80,7 @@ func Login(storage *postgres.Storage) echo.HandlerFunc {
 // @Router /auth/register [post]
 func Register(storage *postgres.Storage) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var req *domain.RegisterRequest
+		var req domain.RegisterRequest
 
 		if err := c.Bind(&req); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
@@ -104,7 +104,7 @@ func Register(storage *postgres.Storage) echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to hash password"})
 		}
 
-		student, err := storage.CreateStudent(context.Background(), req, string(hashedPassword))
+		student, err := storage.CreateStudent(context.Background(), &req, string(hashedPassword))
 
 		if err != nil {
 			return c.JSON(http.StatusConflict, map[string]string{"error": "email already exists"})
@@ -142,7 +142,7 @@ func GetCurrentStudent(storage *postgres.Storage) echo.HandlerFunc {
 		userIDContext := c.Get("user_id")
 		userID, ok := userIDContext.(int)
 		if !ok {
-			return c.JSON(http.StatusInternalServerError, utils.ErrValueConversion)
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": utils.ErrValueConversion.Error()})
 		}
 
 		user, err := storage.GetStudentByID(context.Background(), userID)
