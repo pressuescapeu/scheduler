@@ -1,0 +1,20 @@
+basePath: /api
+info:
+  contact: {}
+  description: API for managing student schedules and course registration
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Student Schedule API
+  version: "1.0"
+paths: {}
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
