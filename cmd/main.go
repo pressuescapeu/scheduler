@@ -81,6 +81,10 @@ func main() {
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
+	e.GET("/api/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	})
+
 	handler.SetupCourseRoutes(e, storage)
 
 	authMiddleware := middleware.JWTAuth()
