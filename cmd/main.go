@@ -47,9 +47,17 @@ func main() {
 	e := echo.New()
 
 	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.PATCH},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowOrigins: []string{
+			"*",
+			"https://scheduler-cqnf.onrender.com",
+			"http://localhost:8080",
+			"http://127.0.0.1:8080",
+		},
+		AllowMethods:     []string{echo.GET, echo.POST, echo.PUT, echo.DELETE, echo.PATCH, echo.OPTIONS},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowCredentials: true,
+		ExposeHeaders:    []string{echo.HeaderContentLength, echo.HeaderAuthorization},
+		MaxAge:           86400,
 	}))
 
 	e.Validator = &CustomValidator{validator: validator.New()}
