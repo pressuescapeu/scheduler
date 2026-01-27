@@ -83,7 +83,7 @@ func Register(storage *postgres.Storage) echo.HandlerFunc {
 		var req domain.RegisterRequest
 
 		if err := c.Bind(&req); err != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "bind failed: " + err.Error()})
 		}
 
 		if err := c.Validate(&req); err != nil {
@@ -107,7 +107,18 @@ func Register(storage *postgres.Storage) echo.HandlerFunc {
 		student, err := storage.CreateStudent(context.Background(), &req, string(hashedPassword))
 
 		if err != nil {
-			return c.JSON(http.StatusConflict, map[string]string{"error": "email already exists"})
+			// Log the actual error for debugging
+			println("CreateStudent error:", err.Error())
+
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "student_id") || strings.Contains(errMsg, "students_student_id_key") {
+				return c.JSON(http.StatusConflict, map[string]string{"error": "student_id already exists"})
+			}
+			if strings.Contains(errMsg, "email") || strings.Contains(errMsg, "students_email_key") {
+				return c.JSON(http.StatusConflict, map[string]string{"error": "email already exists"})
+			}
+			// Return the actual database error if we can't identify it
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		}
 
 		token, err := utils.GenerateToken(student.ID, student.Email)
