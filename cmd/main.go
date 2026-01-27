@@ -35,7 +35,7 @@ func (customValidator *CustomValidator) Validate(i interface{}) error {
 // @license.url https://opensource.org/licenses/MIT
 
 // @BasePath /api
-// @schemes http https
+// @schemes https http
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
