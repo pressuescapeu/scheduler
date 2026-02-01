@@ -138,10 +138,16 @@ func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (
 			meeting, err := s.GetMeetingByID(ctx, *meetingID)
 			if err == nil {
 				sd.Meetings = []domain.SectionMeeting{meeting}
+			} else {
+				sd.Meetings = []domain.SectionMeeting{}
 			}
 		} else {
 			meetings, _ := s.GetSectionMeetings(ctx, sd.ID)
-			sd.Meetings = meetings
+			if meetings == nil {
+				meetings = []domain.SectionMeeting{}
+			} else {
+				sd.Meetings = meetings
+			}
 		}
 
 		sections = append(sections, sd)
