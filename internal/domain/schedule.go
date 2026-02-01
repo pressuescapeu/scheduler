@@ -15,6 +15,7 @@ type ScheduleSection struct {
 	ID         int       `db:"id" json:"id"`
 	ScheduleID int       `db:"schedule_id" json:"schedule_id"`
 	SectionID  int       `db:"section_id" json:"section_id"`
+	MeetingID  *int      `db:"meeting_id" json:"meeting_id"`
 	AddedAt    time.Time `db:"added_at" json:"added_at"`
 }
 
@@ -30,7 +31,8 @@ type CreateScheduleRequest struct {
 }
 
 type AddSectionRequest struct {
-	SectionID int `json:"section_id" validate:"required"`
+	SectionID int  `json:"section_id" validate:"required"`
+	MeetingID *int `json:"meeting_id"`
 }
 
 type ValidationError struct {

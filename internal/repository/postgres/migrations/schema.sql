@@ -75,11 +75,13 @@ CREATE TABLE IF NOT EXISTS schedule_sections (
                                    id SERIAL PRIMARY KEY,
                                    schedule_id INTEGER NOT NULL,
                                    section_id INTEGER NOT NULL,
+                                   meeting_id INTEGER,
                                    added_at TIMESTAMP DEFAULT NOW(),
 
                                    FOREIGN KEY (schedule_id) REFERENCES schedules(id) ON DELETE CASCADE,
                                    FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE,
-                                   UNIQUE(schedule_id, section_id)
+                                   FOREIGN KEY (meeting_id) REFERENCES section_meetings(id) ON DELETE CASCADE,
+                                   UNIQUE(schedule_id, section_id, meeting_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_sections_course ON sections(course_id);
@@ -88,3 +90,4 @@ CREATE INDEX IF NOT EXISTS idx_section_meetings_section ON section_meetings(sect
 CREATE INDEX IF NOT EXISTS idx_schedules_student ON schedules(student_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_schedule ON schedule_sections(schedule_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_section ON schedule_sections(section_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_sections_meeting ON schedule_sections(meeting_id);

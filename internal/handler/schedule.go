@@ -161,7 +161,7 @@ func AddSectionToSchedule(storage *postgres.Storage) echo.HandlerFunc {
 			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
 		}
 
-		err = storage.AddSectionToSchedule(c.Request().Context(), scheduleID, req.SectionID)
+		err = storage.AddSectionToSchedule(c.Request().Context(), scheduleID, req.SectionID, req.MeetingID)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to add section"})
 		}

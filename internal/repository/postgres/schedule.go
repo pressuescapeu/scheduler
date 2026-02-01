@@ -60,13 +60,13 @@ func (s *Storage) GetStudentSchedules(ctx context.Context, studentID int) ([]dom
 	return schedules, nil
 }
 
-func (s *Storage) AddSectionToSchedule(ctx context.Context, scheduleID, sectionID int) error {
+func (s *Storage) AddSectionToSchedule(ctx context.Context, scheduleID, sectionID int, meetingID *int) error {
 	const query = `
-        INSERT INTO schedule_sections (schedule_id, section_id)
-        VALUES ($1, $2)
-        ON CONFLICT (schedule_id, section_id) DO NOTHING;
+        INSERT INTO schedule_sections (schedule_id, section_id, meeting_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (schedule_id, section_id, meeting_id) DO NOTHING;
     `
-	_, err := s.pool.Exec(ctx, query, scheduleID, sectionID)
+	_, err := s.pool.Exec(ctx, query, scheduleID, sectionID, meetingID)
 	return err
 }
 
@@ -84,7 +84,8 @@ func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (
 	const query2 = `
 		SELECT s.id, s.course_id, s.section_number, s.section_type,
                s.professor_id, s.total_seats, s.available_seats, s.parent_section_id,
-               c.course_code, c.course_name, c.credits
+               c.course_code, c.course_name, c.credits,
+               ss.meeting_id
         FROM schedule_sections ss
         JOIN sections s ON ss.section_id = s.id
         JOIN courses c ON s.course_id = c.id
@@ -114,6 +115,7 @@ func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (
 
 	for rows.Next() {
 		var sd domain.SectionWithDetails
+		var meetingID *int
 		err := rows.Scan(
 			&sd.ID,
 			&sd.CourseID,
@@ -126,13 +128,21 @@ func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (
 			&sd.Course.CourseCode,
 			&sd.Course.CourseName,
 			&sd.Course.Credits,
+			&meetingID,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		meetings, _ := s.GetSectionMeetings(ctx, sd.ID)
-		sd.Meetings = meetings
+		if meetingID != nil {
+			meeting, err := s.GetMeetingByID(ctx, *meetingID)
+			if err == nil {
+				sd.Meetings = []domain.SectionMeeting{meeting}
+			}
+		} else {
+			meetings, _ := s.GetSectionMeetings(ctx, sd.ID)
+			sd.Meetings = meetings
+		}
 
 		sections = append(sections, sd)
 		totalCredits += sd.Course.Credits

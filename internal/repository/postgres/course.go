@@ -180,3 +180,24 @@ func (s *Storage) GetSectionMeetings(ctx context.Context, sectionID int) ([]doma
 
 	return meetings, nil
 }
+
+func (s *Storage) GetMeetingByID(ctx context.Context, meetingID int) (domain.SectionMeeting, error) {
+	const query = `
+		SELECT id, section_id, day_of_week, start_time::text, end_time::text, room, building
+		FROM section_meetings
+		WHERE id = $1;
+	`
+
+	var m domain.SectionMeeting
+	err := s.pool.QueryRow(ctx, query, meetingID).Scan(
+		&m.ID,
+		&m.SectionID,
+		&m.DayOfWeek,
+		&m.StartTime,
+		&m.EndTime,
+		&m.Room,
+		&m.Building,
+	)
+
+	return m, err
+}
