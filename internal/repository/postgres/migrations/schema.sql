@@ -21,25 +21,25 @@ CREATE TABLE IF NOT EXISTS professors (
 
 CREATE TABLE IF NOT EXISTS courses (
                          id SERIAL PRIMARY KEY,
-                         course_code VARCHAR(20) UNIQUE NOT NULL, -- "CSCI332"
-                         course_name VARCHAR(200) NOT NULL,        -- "Operating Systems"
+                         course_code VARCHAR(20) UNIQUE NOT NULL,
+                         course_name VARCHAR(200) NOT NULL,
                          credits INTEGER NOT NULL CHECK (credits > 0 AND credits <= 12),
                          is_internship BOOLEAN DEFAULT FALSE,
                          description TEXT,
-                         semester VARCHAR(20) NOT NULL,            -- "Summer 2025"
+                         semester VARCHAR(20) NOT NULL,
                          created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS sections (
                           id SERIAL PRIMARY KEY,
                           course_id INTEGER NOT NULL,
-                          section_number VARCHAR(10) NOT NULL,      -- "001", "002", "L01" (for labs)
-                          section_type VARCHAR(20) NOT NULL         -- "Lecture", "Lab", "Recitation", "Seminar"
+                          section_number VARCHAR(10) NOT NULL,
+                          section_type VARCHAR(20) NOT NULL
                               CHECK (section_type IN ('Lecture', 'Lab', 'Recitation', 'Seminar')),
-                          professor_id INTEGER,                     -- Can be NULL if TBA
+                          professor_id INTEGER,
                           total_seats INTEGER DEFAULT 30 CHECK (total_seats > 0),
-                          available_seats INTEGER DEFAULT 30,       -- Just for display
-                          parent_section_id INTEGER,                -- For linking Lab to Lecture
+                          available_seats INTEGER DEFAULT 30,
+                          parent_section_id INTEGER,
 
                           FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
                           FOREIGN KEY (professor_id) REFERENCES professors(id) ON DELETE SET NULL,
@@ -105,5 +105,18 @@ BEGIN
         ALTER TABLE schedule_sections ADD CONSTRAINT schedule_sections_unique 
             UNIQUE(schedule_id, section_id, meeting_id);
         CREATE INDEX IF NOT EXISTS idx_schedule_sections_meeting ON schedule_sections(meeting_id);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM courses WHERE course_code NOT LIKE '% %'
+    ) THEN
+        DELETE FROM schedule_sections;
+        DELETE FROM section_meetings;
+        DELETE FROM sections;
+        DELETE FROM courses;
+        DELETE FROM professors WHERE id NOT IN (SELECT DISTINCT professor_id FROM sections WHERE professor_id IS NOT NULL);
     END IF;
 END $$;

@@ -262,16 +262,14 @@ func (s *Storage) insertSectionMeeting(ctx context.Context, sectionID int, meeti
 }
 
 func parseCourseAbbr(abbr, sectionType string) (courseCode, sectionNum string) {
-	parts := strings.Fields(strings.ReplaceAll(abbr, "/", " "))
-	if len(parts) < 2 {
-		return "", ""
+	abbr = strings.TrimSpace(abbr)
+
+	if strings.Contains(abbr, "/") {
+		parts := strings.Split(abbr, "/")
+		abbr = strings.TrimSpace(parts[0])
 	}
 
-	lastPart := parts[len(parts)-1]
-	sectionNum = sectionType
-	courseCode = strings.Join(parts[:len(parts)-1], " ") + " " + strings.TrimRight(lastPart, "0123456789")
-
-	return strings.TrimSpace(courseCode), sectionNum
+	return abbr, sectionType
 }
 
 func determineSectionType(typeCode string) string {
