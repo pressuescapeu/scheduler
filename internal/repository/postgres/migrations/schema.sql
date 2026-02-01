@@ -120,3 +120,8 @@ BEGIN
         DELETE FROM professors WHERE id NOT IN (SELECT DISTINCT professor_id FROM sections WHERE professor_id IS NOT NULL);
     END IF;
 END $$;
+
+UPDATE courses
+SET is_internship = TRUE
+WHERE LOWER(course_name) LIKE '%internship%'
+  AND is_internship = FALSE;
