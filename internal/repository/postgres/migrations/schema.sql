@@ -91,3 +91,19 @@ CREATE INDEX IF NOT EXISTS idx_schedules_student ON schedules(student_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_schedule ON schedule_sections(schedule_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_section ON schedule_sections(section_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_meeting ON schedule_sections(meeting_id);
+
+-- Migration: Add meeting_id column to existing schedule_sections table
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'schedule_sections' AND column_name = 'meeting_id'
+    ) THEN
+        ALTER TABLE schedule_sections ADD COLUMN meeting_id INTEGER;
+        ALTER TABLE schedule_sections ADD CONSTRAINT fk_meeting 
+            FOREIGN KEY (meeting_id) REFERENCES section_meetings(id) ON DELETE CASCADE;
+        ALTER TABLE schedule_sections DROP CONSTRAINT IF EXISTS schedule_sections_schedule_id_section_id_key;
+        ALTER TABLE schedule_sections ADD CONSTRAINT schedule_sections_unique 
+            UNIQUE(schedule_id, section_id, meeting_id);
+    END IF;
+END $$;
