@@ -188,11 +188,12 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 
 func (s *Storage) insertCourse(ctx context.Context, code, name string, credits int, semester string) (int, error) {
 	var id int
+	isInternship := strings.Contains(strings.ToLower(name), "internship")
 	query := `INSERT INTO courses (course_code, course_name, credits, semester, is_internship)
-	          VALUES ($1, $2, $3, $4, false)
-	          ON CONFLICT (course_code) DO UPDATE SET course_name = EXCLUDED.course_name
+	          VALUES ($1, $2, $3, $4, $5)
+	          ON CONFLICT (course_code) DO UPDATE SET course_name = EXCLUDED.course_name, is_internship = EXCLUDED.is_internship
 	          RETURNING id`
-	err := s.pool.QueryRow(ctx, query, code, name, credits, semester).Scan(&id)
+	err := s.pool.QueryRow(ctx, query, code, name, credits, semester, isInternship).Scan(&id)
 	return id, err
 }
 
