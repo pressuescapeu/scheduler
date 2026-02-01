@@ -78,7 +78,7 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 			CourseAbbr:  strings.TrimSpace(row[2]),
 			SectionType: strings.TrimSpace(row[3]),
 			CourseTitle: strings.TrimSpace(row[4]),
-			Credits:     parseCredits(row[5]),
+			Credits:     parseCredits(row[6]), // Use ECTS credits (column 6), not US credits
 			StartDate:   strings.TrimSpace(row[7]),
 			EndDate:     strings.TrimSpace(row[8]),
 			Days:        strings.TrimSpace(row[9]),
@@ -152,49 +152,46 @@ func (s *Storage) insertProfessors(ctx context.Context, faculty string, profMap 
 		return nil
 	}
 
-	// Split multiple professors
+	// Split multiple professors and only take the first one
 	names := strings.Split(faculty, ",")
-	var ids []int
-
-	for _, name := range names {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-
-		if id, exists := profMap[name]; exists {
-			ids = append(ids, id)
-			continue
-		}
-
-		// Parse first and last name
-		parts := strings.Fields(name)
-		if len(parts) < 2 {
-			continue
-		}
-
-		firstName := parts[0]
-		lastName := strings.Join(parts[1:], " ")
-
-		var id int
-		query := `INSERT INTO professors (first_name, last_name, email)
-		          VALUES ($1, $2, $3)
-		          ON CONFLICT (email) DO UPDATE SET first_name = EXCLUDED.first_name
-		          RETURNING id`
-		email := fmt.Sprintf("%s.%s@nu.edu.kz",
-			strings.ToLower(firstName),
-			strings.ToLower(strings.ReplaceAll(lastName, " ", "")))
-
-		err := s.pool.QueryRow(ctx, query, firstName, lastName, email).Scan(&id)
-		if err != nil {
-			continue
-		}
-
-		profMap[name] = id
-		ids = append(ids, id)
+	if len(names) == 0 {
+		return nil
 	}
 
-	return ids
+	name := strings.TrimSpace(names[0]) // Only use first professor
+	if name == "" {
+		return nil
+	}
+
+	if id, exists := profMap[name]; exists {
+		return []int{id}
+	}
+
+	// Parse first and last name
+	parts := strings.Fields(name)
+	if len(parts) < 2 {
+		return nil
+	}
+
+	firstName := parts[0]
+	lastName := strings.Join(parts[1:], " ")
+
+	var id int
+	query := `INSERT INTO professors (first_name, last_name, email)
+	          VALUES ($1, $2, $3)
+	          ON CONFLICT (email) DO UPDATE SET first_name = EXCLUDED.first_name
+	          RETURNING id`
+	email := fmt.Sprintf("%s.%s@nu.edu.kz",
+		strings.ToLower(firstName),
+		strings.ToLower(strings.ReplaceAll(lastName, " ", "")))
+
+	err := s.pool.QueryRow(ctx, query, firstName, lastName, email).Scan(&id)
+	if err != nil {
+		return nil
+	}
+
+	profMap[name] = id
+	return []int{id}
 }
 
 func (s *Storage) insertSection(ctx context.Context, courseID int, sectionNum, sectionType string, professorID *int, totalSeats int) (int, error) {
