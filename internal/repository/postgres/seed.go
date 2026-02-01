@@ -31,9 +31,27 @@ type CourseData struct {
 	Room        string
 }
 
-// SeedDatabase imports course data from CSV if database is empty
+type MeetingInfo struct {
+	Day      string
+	Start    string
+	End      string
+	Building *string
+	Room     *string
+}
+
+type SectionInfo struct {
+	CourseCode   string
+	SectionNum   string
+	SectionType  string
+	CourseTitle  string
+	Credits      float64
+	Semester     string
+	ProfessorIDs []int
+	TotalSeats   int
+	Meetings     map[string]MeetingInfo
+}
+
 func (s *Storage) SeedDatabase(ctx context.Context) error {
-	// Check if we already have data
 	var count int
 	err := s.pool.QueryRow(ctx, "SELECT COUNT(*) FROM courses").Scan(&count)
 	if err != nil {
@@ -53,19 +71,16 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 		return fmt.Errorf("failed to parse CSV: %w", err)
 	}
 
-	// Skip first 3 rows (headers)
 	if len(records) < 4 {
 		return fmt.Errorf("CSV file too short")
 	}
 
-	semester := strings.TrimSpace(records[0][0]) // "Spring 2026"
+	semester := strings.TrimSpace(records[0][0])
 	dataRows := records[3:]
 
 	professorMap := make(map[string]int)
 	courseMap := make(map[string]int)
-
-	coursesAdded := 0
-	sectionsAdded := 0
+	sectionMap := make(map[string]*SectionInfo)
 
 	for _, row := range dataRows {
 		if len(row) < 14 || strings.TrimSpace(row[2]) == "" {
@@ -78,7 +93,7 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 			CourseAbbr:  strings.TrimSpace(row[2]),
 			SectionType: strings.TrimSpace(row[3]),
 			CourseTitle: strings.TrimSpace(row[4]),
-			Credits:     parseCredits(row[6]), // Use ECTS credits (column 6), not US credits
+			Credits:     parseCredits(row[6]),
 			StartDate:   strings.TrimSpace(row[7]),
 			EndDate:     strings.TrimSpace(row[8]),
 			Days:        strings.TrimSpace(row[9]),
@@ -89,45 +104,79 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 			Room:        strings.TrimSpace(row[14]),
 		}
 
-		// Extract course code and section number
 		courseCode, sectionNum := parseCourseAbbr(data.CourseAbbr, data.SectionType)
 		if courseCode == "" {
 			continue
 		}
 
-		// Insert or get course
-		courseID, exists := courseMap[courseCode]
+		sectionKey := courseCode + "|" + sectionNum
+
+		if _, exists := sectionMap[sectionKey]; !exists {
+			professorIDs := s.insertProfessors(ctx, data.Faculty, professorMap)
+			sectionMap[sectionKey] = &SectionInfo{
+				CourseCode:   courseCode,
+				SectionNum:   sectionNum,
+				SectionType:  determineSectionType(data.SectionType),
+				CourseTitle:  data.CourseTitle,
+				Credits:      data.Credits,
+				Semester:     semester,
+				ProfessorIDs: professorIDs,
+				TotalSeats:   data.Cap,
+				Meetings:     make(map[string]MeetingInfo),
+			}
+		}
+
+		section := sectionMap[sectionKey]
+
+		if data.Days != "" && data.Time != "" {
+			daysList := parseDays(data.Days)
+			startTime, endTime := parseTime(data.Time)
+			building, roomNum := parseRoom(data.Room)
+
+			for _, day := range daysList {
+				meetingKey := day + "|" + startTime + "|" + endTime
+				if _, exists := section.Meetings[meetingKey]; !exists {
+					section.Meetings[meetingKey] = MeetingInfo{
+						Day:      day,
+						Start:    startTime,
+						End:      endTime,
+						Building: building,
+						Room:     roomNum,
+					}
+				}
+			}
+		}
+	}
+
+	coursesAdded := 0
+	sectionsAdded := 0
+
+	for _, section := range sectionMap {
+		courseID, exists := courseMap[section.CourseCode]
 		if !exists {
-			courseID, err = s.insertCourse(ctx, courseCode, data.CourseTitle, int(data.Credits), semester)
+			courseID, err = s.insertCourse(ctx, section.CourseCode, section.CourseTitle, int(section.Credits), section.Semester)
 			if err != nil {
-				log.Printf("Failed to insert course %s: %v", courseCode, err)
+				log.Printf("Failed to insert course %s: %v", section.CourseCode, err)
 				continue
 			}
-			courseMap[courseCode] = courseID
+			courseMap[section.CourseCode] = courseID
 			coursesAdded++
 		}
 
-		// Insert professors
-		professorIDs := s.insertProfessors(ctx, data.Faculty, professorMap)
 		var professorID *int
-		if len(professorIDs) > 0 {
-			professorID = &professorIDs[0]
+		if len(section.ProfessorIDs) > 0 {
+			professorID = &section.ProfessorIDs[0]
 		}
 
-		// Determine section type
-		sectionType := determineSectionType(data.SectionType)
-
-		// Insert section
-		sectionID, err := s.insertSection(ctx, courseID, sectionNum, sectionType, professorID, data.Cap)
+		sectionID, err := s.insertSection(ctx, courseID, section.SectionNum, section.SectionType, professorID, section.TotalSeats)
 		if err != nil {
-			log.Printf("Failed to insert section %s-%s: %v", courseCode, sectionNum, err)
+			log.Printf("Failed to insert section %s-%s: %v", section.CourseCode, section.SectionNum, err)
 			continue
 		}
 		sectionsAdded++
 
-		// Insert section meetings
-		if data.Days != "" && data.Time != "" {
-			s.insertSectionMeetings(ctx, sectionID, data.Days, data.Time, data.Room)
+		for _, meeting := range section.Meetings {
+			s.insertSectionMeeting(ctx, sectionID, meeting)
 		}
 	}
 
@@ -152,13 +201,12 @@ func (s *Storage) insertProfessors(ctx context.Context, faculty string, profMap 
 		return nil
 	}
 
-	// Split multiple professors and only take the first one
 	names := strings.Split(faculty, ",")
 	if len(names) == 0 {
 		return nil
 	}
 
-	name := strings.TrimSpace(names[0]) // Only use first professor
+	name := strings.TrimSpace(names[0])
 	if name == "" {
 		return nil
 	}
@@ -167,7 +215,6 @@ func (s *Storage) insertProfessors(ctx context.Context, faculty string, profMap 
 		return []int{id}
 	}
 
-	// Parse first and last name
 	parts := strings.Fields(name)
 	if len(parts) < 2 {
 		return nil
@@ -204,43 +251,24 @@ func (s *Storage) insertSection(ctx context.Context, courseID int, sectionNum, s
 	return id, err
 }
 
-func (s *Storage) insertSectionMeetings(ctx context.Context, sectionID int, days, timeStr, room string) {
-	daysList := parseDays(days)
-	startTime, endTime := parseTime(timeStr)
-
-	if startTime == "" || endTime == "" {
-		return
-	}
-
-	building, roomNum := parseRoom(room)
-
-	for _, day := range daysList {
-		query := `INSERT INTO section_meetings (section_id, day_of_week, start_time, end_time, room, building)
-		          VALUES ($1, $2, $3, $4, $5, $6)
-		          ON CONFLICT DO NOTHING`
-		_, err := s.pool.Exec(ctx, query, sectionID, day, startTime, endTime, roomNum, building)
-		if err != nil {
-			log.Printf("Failed to insert meeting for section %d: %v", sectionID, err)
-		}
+func (s *Storage) insertSectionMeeting(ctx context.Context, sectionID int, meeting MeetingInfo) {
+	query := `INSERT INTO section_meetings (section_id, day_of_week, start_time, end_time, room, building)
+	          VALUES ($1, $2, $3, $4, $5, $6)
+	          ON CONFLICT DO NOTHING`
+	_, err := s.pool.Exec(ctx, query, sectionID, meeting.Day, meeting.Start, meeting.End, meeting.Room, meeting.Building)
+	if err != nil {
+		log.Printf("Failed to insert meeting for section %d: %v", sectionID, err)
 	}
 }
 
-// Helper functions
-
 func parseCourseAbbr(abbr, sectionType string) (courseCode, sectionNum string) {
-	// Remove slashes (cross-listed courses)
 	parts := strings.Fields(strings.ReplaceAll(abbr, "/", " "))
 	if len(parts) < 2 {
 		return "", ""
 	}
 
-	// Last part is course code with section
 	lastPart := parts[len(parts)-1]
-
-	// Extract section number from type (e.g., "1L", "2S")
 	sectionNum = sectionType
-
-	// Course code is everything else
 	courseCode = strings.Join(parts[:len(parts)-1], " ") + " " + strings.TrimRight(lastPart, "0123456789")
 
 	return strings.TrimSpace(courseCode), sectionNum
@@ -311,7 +339,6 @@ func convertTo24Hour(t string) string {
 		return ""
 	}
 
-	// Parse time like "02:00 PM" to "14:00:00"
 	parsed, err := time.Parse("03:04 PM", t)
 	if err != nil {
 		return ""
@@ -325,7 +352,6 @@ func parseRoom(room string) (building, roomNum *string) {
 		return nil, nil
 	}
 
-	// Format: "(C3) 1009 - cap:70" or "Green Hall - cap:231"
 	parts := strings.Split(room, "-")
 	if len(parts) == 0 {
 		return nil, nil
@@ -333,7 +359,6 @@ func parseRoom(room string) (building, roomNum *string) {
 
 	location := strings.TrimSpace(parts[0])
 
-	// Check if it has building code in parentheses
 	if strings.Contains(location, "(") && strings.Contains(location, ")") {
 		start := strings.Index(location, "(")
 		end := strings.Index(location, ")")
@@ -343,7 +368,6 @@ func parseRoom(room string) (building, roomNum *string) {
 		return &buildingCode, &room
 	}
 
-	// Otherwise, it's just a building name
 	return &location, nil
 }
 

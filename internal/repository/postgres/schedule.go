@@ -63,7 +63,8 @@ func (s *Storage) GetStudentSchedules(ctx context.Context, studentID int) ([]dom
 func (s *Storage) AddSectionToSchedule(ctx context.Context, scheduleID, sectionID int) error {
 	const query = `
         INSERT INTO schedule_sections (schedule_id, section_id)
-        VALUES ($1, $2);
+        VALUES ($1, $2)
+        ON CONFLICT (schedule_id, section_id) DO NOTHING;
     `
 	_, err := s.pool.Exec(ctx, query, scheduleID, sectionID)
 	return err
