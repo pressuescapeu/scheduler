@@ -90,7 +90,6 @@ CREATE INDEX IF NOT EXISTS idx_section_meetings_section ON section_meetings(sect
 CREATE INDEX IF NOT EXISTS idx_schedules_student ON schedules(student_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_schedule ON schedule_sections(schedule_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_sections_section ON schedule_sections(section_id);
-CREATE INDEX IF NOT EXISTS idx_schedule_sections_meeting ON schedule_sections(meeting_id);
 
 -- Migration: Add meeting_id column to existing schedule_sections table
 DO $$ 
@@ -105,5 +104,6 @@ BEGIN
         ALTER TABLE schedule_sections DROP CONSTRAINT IF EXISTS schedule_sections_schedule_id_section_id_key;
         ALTER TABLE schedule_sections ADD CONSTRAINT schedule_sections_unique 
             UNIQUE(schedule_id, section_id, meeting_id);
+        CREATE INDEX IF NOT EXISTS idx_schedule_sections_meeting ON schedule_sections(meeting_id);
     END IF;
 END $$;
