@@ -83,8 +83,10 @@ func (s *Storage) GetSectionsForCourse(ctx context.Context, courseID int) ([]dom
 	const query = `
 		SELECT s.id, s.course_id, s.section_number, s.section_type,
             s.professor_id, s.total_seats, s.available_seats, s.parent_section_id,
+            c.id, c.course_code, c.course_name, c.credits,
             p.id, p.first_name, p.last_name, p.email, p.rating
         FROM sections s
+        JOIN courses c ON s.course_id = c.id
         LEFT JOIN professors p ON s.professor_id = p.id
         WHERE s.course_id = $1
         ORDER BY s.section_type, s.section_number
@@ -100,16 +102,20 @@ func (s *Storage) GetSectionsForCourse(ctx context.Context, courseID int) ([]dom
 	var sections []domain.SectionWithDetails
 	for rows.Next() {
 		var sd domain.SectionWithDetails
+		var course domain.Course
 		var prof domain.Professor
 
 		err := rows.Scan(
 			&sd.ID, &sd.CourseID, &sd.SectionNumber, &sd.SectionType,
 			&sd.ProfessorID, &sd.TotalSeats, &sd.AvailableSeats, &sd.ParentSectionID,
+			&course.ID, &course.CourseCode, &course.CourseName, &course.Credits,
 			&prof.ID, &prof.FirstName, &prof.LastName, &prof.Email, &prof.Rating,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		sd.Course = course
 
 		if sd.ProfessorID != nil {
 			sd.Professor = &prof
