@@ -79,6 +79,11 @@ func main() {
 		e.Logger.Fatal("Failed to run migrations:", err)
 	}
 
+	// Seed database with course data if empty
+	if err := storage.SeedDatabase(context.Background()); err != nil {
+		e.Logger.Warn("Failed to seed database:", err)
+	}
+
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	e.GET("/api/health", func(c echo.Context) error {
