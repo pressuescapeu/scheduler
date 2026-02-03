@@ -79,6 +79,12 @@ func main() {
 		e.Logger.Fatal("Failed to run migrations:", err)
 	}
 
+	if os.Getenv("RESET_DB_ON_START") == "true" {
+		if err := storage.ResetCourseData(context.Background()); err != nil {
+			e.Logger.Fatal("Failed to reset course data:", err)
+		}
+	}
+
 	// Seed database with course data if empty
 	if err := storage.SeedDatabase(context.Background()); err != nil {
 		e.Logger.Warn("Failed to seed database:", err)

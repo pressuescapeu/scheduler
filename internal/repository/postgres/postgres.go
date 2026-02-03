@@ -32,6 +32,20 @@ func (s *Storage) RunMigrations(ctx context.Context) error {
 	return err
 }
 
+// ResetCourseData wipes course-related data to allow reseeding
+func (s *Storage) ResetCourseData(ctx context.Context) error {
+	const query = `
+		TRUNCATE schedule_sections,
+		         section_meetings,
+		         sections,
+		         courses,
+		         professors
+		RESTART IDENTITY CASCADE;
+	`
+	_, err := s.pool.Exec(ctx, query)
+	return err
+}
+
 // Close closes the database connection pool
 func (s *Storage) Close() {
 	if s.pool != nil {

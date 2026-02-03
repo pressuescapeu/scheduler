@@ -118,6 +118,7 @@ func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (
 	defer rows.Close()
 	var sections []domain.SectionWithDetails
 	totalCredits := 0
+	seenCourses := make(map[int]bool)
 
 	for rows.Next() {
 		var sd domain.SectionWithDetails
@@ -157,7 +158,10 @@ func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (
 		}
 
 		sections = append(sections, sd)
-		totalCredits += sd.Course.Credits
+		if !seenCourses[sd.CourseID] {
+			totalCredits += sd.Course.Credits
+			seenCourses[sd.CourseID] = true
+		}
 	}
 
 	return &domain.ScheduleWithSections{

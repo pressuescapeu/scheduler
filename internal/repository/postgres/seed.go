@@ -81,6 +81,8 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 	professorMap := make(map[string]int)
 	courseMap := make(map[string]int)
 	sectionMap := make(map[string]*SectionInfo)
+	courseCredits := make(map[string]float64)
+	courseCreditSource := make(map[string]string)
 
 	for _, row := range dataRows {
 		if len(row) < 14 || strings.TrimSpace(row[2]) == "" {
@@ -109,14 +111,27 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 			continue
 		}
 
+		sectionType := determineSectionType(data.SectionType)
 		sectionKey := courseCode + "|" + sectionNum
+
+		if sectionType == "Lecture" {
+			if courseCreditSource[courseCode] != "Lecture" && data.Credits > 0 {
+				courseCredits[courseCode] = data.Credits
+				courseCreditSource[courseCode] = "Lecture"
+			}
+		} else {
+			if _, exists := courseCredits[courseCode]; !exists && data.Credits > 0 {
+				courseCredits[courseCode] = data.Credits
+				courseCreditSource[courseCode] = "Other"
+			}
+		}
 
 		if _, exists := sectionMap[sectionKey]; !exists {
 			professorIDs := s.insertProfessors(ctx, data.Faculty, professorMap)
 			sectionMap[sectionKey] = &SectionInfo{
 				CourseCode:   courseCode,
 				SectionNum:   sectionNum,
-				SectionType:  determineSectionType(data.SectionType),
+				SectionType:  sectionType,
 				CourseTitle:  data.CourseTitle,
 				Credits:      data.Credits,
 				Semester:     semester,
@@ -154,7 +169,11 @@ func (s *Storage) SeedDatabase(ctx context.Context) error {
 	for _, section := range sectionMap {
 		courseID, exists := courseMap[section.CourseCode]
 		if !exists {
-			courseID, err = s.insertCourse(ctx, section.CourseCode, section.CourseTitle, int(section.Credits), section.Semester)
+			credits := section.Credits
+			if preferredCredits, ok := courseCredits[section.CourseCode]; ok {
+				credits = preferredCredits
+			}
+			courseID, err = s.insertCourse(ctx, section.CourseCode, section.CourseTitle, int(credits), section.Semester)
 			if err != nil {
 				log.Printf("Failed to insert course %s: %v", section.CourseCode, err)
 				continue
