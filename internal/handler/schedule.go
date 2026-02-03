@@ -16,6 +16,7 @@ func SetupScheduleRoutes(e *echo.Echo, storage *postgres.Storage, authMiddleware
 	g.GET("", GetMySchedules(storage))
 	g.POST("", CreateSchedule(storage))
 	g.GET("/:id", GetScheduleByID(storage))
+	g.PATCH("/:id/submit", SubmitSchedule(storage))
 	g.POST("/:id/sections", AddSectionToSchedule(storage))
 	g.DELETE("/:id/sections/:sectionId", RemoveSectionFromSchedule(storage))
 }
@@ -115,6 +116,51 @@ func GetScheduleByID(storage *postgres.Storage) echo.HandlerFunc {
 		}
 
 		return c.JSON(http.StatusOK, schedule)
+	}
+}
+
+// SubmitSchedule godoc
+// @Summary Submit a schedule
+// @Description Mark a schedule as submitted (finalized)
+// @Tags schedules
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Schedule ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /schedules/{id}/submit [patch]
+func SubmitSchedule(storage *postgres.Storage) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		studentID, ok := c.Get("user_id").(int)
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid user context"})
+		}
+
+		scheduleID, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid schedule id"})
+		}
+
+		schedule, err := storage.GetScheduleWithSections(c.Request().Context(), scheduleID)
+		if err != nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "schedule not found"})
+		}
+
+		if schedule.StudentID != studentID {
+			return c.JSON(http.StatusForbidden, map[string]string{"error": "access denied"})
+		}
+
+		err = storage.SubmitSchedule(c.Request().Context(), scheduleID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to submit schedule"})
+		}
+
+		return c.JSON(http.StatusOK, map[string]string{"message": "schedule submitted"})
 	}
 }
 

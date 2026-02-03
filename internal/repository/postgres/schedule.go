@@ -76,6 +76,12 @@ func (s *Storage) RemoveSectionFromSchedule(ctx context.Context, scheduleID, sec
 	return err
 }
 
+func (s *Storage) SubmitSchedule(ctx context.Context, scheduleID int) error {
+	const query = `UPDATE schedules SET is_submitted = TRUE WHERE id = $1;`
+	_, err := s.pool.Exec(ctx, query, scheduleID)
+	return err
+}
+
 func (s *Storage) GetScheduleWithSections(ctx context.Context, scheduleID int) (*domain.ScheduleWithSections, error) {
 	var schedule domain.Schedule
 
